@@ -4,6 +4,8 @@
 
 #include <glad/glad.h>
 
+#include <glm/glm.hpp>
+
 class Image
 {
 public:
@@ -13,6 +15,8 @@ public:
 
 	void SetData(const void* data);
 	void Resize(uint32_t width, uint32_t height);
+
+	void SetPixel(int x, int y, glm::vec3 color);
 
 	uint32_t GetWidth() const { return m_Width; }
 	uint32_t GetHeight() const { return m_Height; }

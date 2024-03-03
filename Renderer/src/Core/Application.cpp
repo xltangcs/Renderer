@@ -159,7 +159,7 @@ void Application::Run()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         
-        //ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
+        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
         //ShowExampleAppDockSpace(&dockspace);
 
         for (auto& imguilayer : m_ImGuiLayerVector)

@@ -12,9 +12,11 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "Core/Image.h"
 #include "Core/Camera.h"
 #include "Core/Application.h"
+
+#include "App/Renderer.h"
+#include "App/Scene/BaseScene.h"
 
 class MyImGuiLayer : public ImGuiLayer
 {
@@ -22,7 +24,7 @@ public:
 	MyImGuiLayer()
 		:m_Camera(45.0f, 0.1f, 100.0f)
 	{
-
+		//m_Scene = CreatBaseScene();
 	}
 
 	virtual void OnUpdate(float ts) override
@@ -34,6 +36,7 @@ public:
 		glViewport(0, 0, m_Width, m_Height);
 
 		m_Camera.OnUpdate(ts);
+		m_Renderer.OnResize(m_Width, m_Height);
 	}
 
 	virtual void ShowUI(float ts) override
@@ -47,22 +50,27 @@ public:
 		ImGui::Checkbox("Camera Rotation", &m_Camera.GetIsRotation());
 
 		ImGui::End();
+
+		ImGui::Begin("Viewport");
+		auto image = m_Renderer.GetImage();
+
+		ImGui::Image((ImTextureID)image->GetTextureID(), { (float)image->GetWidth(), (float)image->GetHeight() });
+
+		ImGui::End();
+
 	}
 
 	virtual void Render(float ts) override
 	{
-
+		m_Renderer.Render(m_Camera, m_Scene);
 	}
 
 private:
 	unsigned int m_Width = 10, m_Height = 10;
+
 	Camera m_Camera;
-
-
-
-
-
-
+	Scene m_Scene;
+	Renderer m_Renderer;
 };
 
 int main()

@@ -76,6 +76,13 @@ void Image::Resize(uint32_t width, uint32_t height)
     CreatImage();
 }
 
+void Image::SetPixel(int x, int y, glm::vec3 color)
+{
+    m_Data[x * m_Width + y] = color.x;
+    m_Data[x * m_Width + y + 1] = color.x;
+    m_Data[x * m_Width + y + 1] = color.x;
+}
+
 void Image::CreatImage()
 {
     //glGenTextures(1, &m_TextureID);
