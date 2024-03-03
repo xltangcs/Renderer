@@ -31,8 +31,6 @@ void Camera::OnUpdate(float ts)
 {
 	int width, height;
 	auto window = Application::Get().GetGLFWwindow();
-	glfwGetFramebufferSize(window, &width, &height);
-	OnResize(width, height);
 
 	this->isCameraMoved = false;
 

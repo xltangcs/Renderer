@@ -151,9 +151,6 @@ void Application::Run()
 
         /********************** update end *********************/
 
-        //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-        //glClear(GL_COLOR_BUFFER_BIT);
-
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -161,31 +158,22 @@ void Application::Run()
         
         ImGui::DockSpaceOverViewport(ImGui::GetMainViewport());
         //ShowExampleAppDockSpace(&dockspace);
+        //ImGui::ShowDemoWindow(&show_demo_window);
 
         for (auto& imguilayer : m_ImGuiLayerVector)
         {
             imguilayer->ShowUI(m_TimeStep);
+
             imguilayer->Render(m_TimeStep);
         }
-
- /*     for (auto& imguilayer : m_ImGuiLayerVector)
-        {
-            imguilayer->Render(m_TimeStep);
-        }*/
-
-        //int display_w, display_h;
-        //glfwGetFramebufferSize(m_GLFWwindow, &display_w, &display_h);
-        //glViewport(0, 0, display_w, display_h);
-        
-        //ImGui::ShowDemoWindow(&show_demo_window);
-
 
         // Rendering
         ImGui::Render();
 
-        //int display_w, display_h;
-        //glfwGetFramebufferSize(m_GLFWwindow, &display_w, &display_h);
-        //glViewport(0, 0, display_w, display_h);
+        int display_w, display_h;
+        glfwGetFramebufferSize(m_GLFWwindow, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+
         //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
         //glClear(GL_COLOR_BUFFER_BIT);
 

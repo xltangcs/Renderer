@@ -20,6 +20,8 @@ public:
 	int nVerts() { return (int)verts.size(); }
 	int nFaces() { return (int)faces.size(); }
 
+	glm::vec3 GetVert(int index) { return verts[index]; }
+
 private:
 	std::vector<glm::vec3> verts;
 	std::vector<glm::vec2> uvs;

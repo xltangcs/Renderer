@@ -24,23 +24,17 @@ public:
 	MyImGuiLayer()
 		:m_Camera(45.0f, 0.1f, 100.0f)
 	{
-		//m_Scene = CreatBaseScene();
+		m_Scene = CreatBaseScene();
 	}
 
 	virtual void OnUpdate(float ts) override
 	{
-		int width, height;
-		auto window = Application::Get().GetGLFWwindow();
-		glfwGetFramebufferSize(window, &width, &height);
-		m_Width = width; m_Height = height;
-		glViewport(0, 0, m_Width, m_Height);
-
 		m_Camera.OnUpdate(ts);
-		m_Renderer.OnResize(m_Width, m_Height);
 	}
 
 	virtual void ShowUI(float ts) override
 	{
+		const char* renderModeName[3] = { "Point", "Line", "Triangle" };
 		ImGui::Begin("Setting");
 
 		ImGui::Text("The average fps: %.3f", ImGui::GetIO().Framerate);
@@ -48,13 +42,23 @@ public:
 		ImGui::DragFloat3("Camera Position", glm::value_ptr(m_Camera.GetPosition()));
 		ImGui::DragFloat3("Camera Direction", glm::value_ptr(m_Camera.GetDirection()));
 		ImGui::Checkbox("Camera Rotation", &m_Camera.GetIsRotation());
+		ImGui::Separator();
 
+		if (ImGui::Combo("Render Mode", (int*)&m_Renderer.rendermode, renderModeName, 3))
+		{
+			m_Renderer.isReset = true;
+		}
+		
 		ImGui::End();
 
 		ImGui::Begin("Viewport");
-		auto image = m_Renderer.GetImage();
 
-		ImGui::Image((ImTextureID)image->GetTextureID(), { (float)image->GetWidth(), (float)image->GetHeight() });
+		m_Width = (uint32_t)ImGui::GetContentRegionAvail().x;
+		m_Height = (uint32_t)ImGui::GetContentRegionAvail().y;
+
+		auto image = m_Renderer.GetImage();
+		if(image)
+			ImGui::Image((ImTextureID)image->GetTextureID(), { (float)image->GetWidth(), (float)image->GetHeight() });
 
 		ImGui::End();
 
@@ -62,6 +66,9 @@ public:
 
 	virtual void Render(float ts) override
 	{
+		m_Renderer.OnResize(m_Width, m_Height);
+		m_Camera.OnResize(m_Width, m_Height);
+
 		m_Renderer.Render(m_Camera, m_Scene);
 	}
 
