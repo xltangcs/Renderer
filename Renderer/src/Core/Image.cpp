@@ -19,16 +19,15 @@ Image::Image(const std::string& path)
 {
     glGenTextures(1, &m_TextureID);
 
-    int width, height, nrComponents;
-    uint8_t* data = stbi_load(path.c_str(), &width, &height, &nrComponents, 0);
-    GLenum format = 0;
+    uint8_t* data = stbi_load(path.c_str(), &m_Width, &m_Height, &m_Channels, 0);
     if (data)
     {
-        if (nrComponents == 1)
+        GLenum format = 0;
+        if (m_Channels == 1)
             format = GL_RED;
-        else if (nrComponents == 3)
+        else if (m_Channels == 3)
             format = GL_RGB;
-        else if (nrComponents == 4)
+        else if (m_Channels == 4)
             format = GL_RGBA;
 
         glBindTexture(GL_TEXTURE_2D, m_TextureID);
@@ -39,18 +38,16 @@ Image::Image(const std::string& path)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
 
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, m_Width, m_Height, 0, format, GL_UNSIGNED_BYTE, data);
 
-        m_Width = width;
-        m_Height = height;
+        m_Data = data;
         m_DataFormat = format;
-
-        stbi_image_free(data);
+        //stbi_image_free(data);
     }
     else
     {
         std::cout << "Texture failed to load at path: " << path << std::endl;
-        stbi_image_free(data);
+        //stbi_image_free(data);
     }
 }
 
@@ -81,6 +78,39 @@ void Image::SetPixel(int x, int y, glm::vec3 color)
     m_Data[x * m_Width + y] = color.x;
     m_Data[x * m_Width + y + 1] = color.x;
     m_Data[x * m_Width + y + 1] = color.x;
+}
+
+glm::vec3 Image::GetPixel(glm::vec2 uv)
+{
+    int x = static_cast<int>(uv.x * m_Width);
+    int y = static_cast<int>(uv.y * m_Height);
+
+    // Ensure coordinates are within bounds
+    x = glm::clamp(x, 0, (int)(m_Width - 1));
+    y = glm::clamp(y, 0, (int)(m_Height - 1));
+
+    int index = (x + y * m_Width) * m_Channels;
+
+    glm::vec3 color;
+    if (m_Channels == 1) {
+        uint8_t intensity = m_Data[index];
+        color = glm::vec3(intensity / 255.0f);
+    }
+    else if (m_Channels == 3) {
+        uint8_t r = m_Data[index];
+        uint8_t g = m_Data[index + 1];
+        uint8_t b = m_Data[index + 2];
+        color = glm::vec3(r / 255.0f, g / 255.0f, b / 255.0f);
+    }
+    else if (m_Channels == 4) {
+        uint8_t r = m_Data[index];
+        uint8_t g = m_Data[index + 1];
+        uint8_t b = m_Data[index + 2];
+        color = glm::vec3(r / 255.0f, g / 255.0f, b / 255.0f);
+        // Alpha channel is ignored in this example
+    }
+
+    return color;
 }
 
 void Image::CreatImage()

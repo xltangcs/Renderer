@@ -17,6 +17,7 @@ public:
 	void Resize(uint32_t width, uint32_t height);
 
 	void SetPixel(int x, int y, glm::vec3 color);
+	glm::vec3 GetPixel(glm::vec2 uv);
 
 	uint32_t GetWidth() const { return m_Width; }
 	uint32_t GetHeight() const { return m_Height; }
@@ -25,7 +26,7 @@ private:
 	void CreatImage();
 
 private:
-	uint32_t m_Width = 0, m_Height = 0;
+	int m_Width = 0, m_Height = 0, m_Channels = 0;
 	uint32_t m_TextureID = 0;
 	uint8_t* m_Data = nullptr;
 	GLenum m_DataFormat = 0;

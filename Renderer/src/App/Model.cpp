@@ -60,12 +60,12 @@ bool Model::LoadModel(const char* filename)
     return true;
 }
 
-std::vector<int> Model::GetFace(int index)
-{
-    std::vector<int> face;
-    for (int i = 0; i < (int)faces[index].size(); i++)
-        face.push_back(faces[index][i][0]);
-    return face;
-    
-}
+//std::vector<int> Model::GetFace(int index)
+//{
+//    std::vector<int> face;
+//    for (int i = 0; i < (int)faces[index].size(); i++)
+//        face.push_back(faces[index][i][0]);
+//    return face;
+//    
+//}
 

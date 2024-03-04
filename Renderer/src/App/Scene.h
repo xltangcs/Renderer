@@ -3,6 +3,7 @@
 #include <memory>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Core/Image.h"
 #include "App/Model.h"
 #include "App/Triangle.h"
 
@@ -20,17 +21,28 @@ struct ModelInstance
 	~ModelInstance() {}
 };
 
+struct Light
+{
+	glm::vec3 color;
+
+	glm::vec3 position;
+	glm::vec3 dir;
+
+};
+
 class Scene
 {
 public:
 	char* sceneName;
-	std::vector<Triangle> m_Triangles;
 	std::vector<std::shared_ptr<Model>> m_Models;
+	std::vector<Light> m_Lights;
+	std::shared_ptr<Image> texture;
 public:
-	Scene(char* name = "Scene") : sceneName(name) { };
+	Scene(char* name = "Scene");
 	~Scene() = default;
 
 	int AddModel(const std::string& filename);
+	int AddLight(Light light);
 
 	void ProcessScene();
 private:

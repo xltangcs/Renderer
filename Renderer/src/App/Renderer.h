@@ -6,12 +6,13 @@
 #include "Core/Camera.h"
 #include "App/Model.h"
 #include "App/Scene.h"
+#include "App/Triangle.h"
 
 enum RENDERMODE
 {
-	Point = 0,
-	Line = 1,
-	Triangle = 2
+	Point_MODE = 0,
+	Line_MODE = 1,
+	Triangle_MODE = 2
 };
 
 
@@ -42,10 +43,10 @@ private:
 
 	void DrawPoint(glm::vec2 p, glm::vec3 color);
 	void DrawLine(glm::vec2 p0, glm::vec2 p1, glm::vec3 color);
-	void DrawTriangle(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec3 color);
-	void DrawTriangle(std::vector<glm::vec3> t, glm::vec3 color);
+	void Renderer::DrawTriangle(Triangle t, std::vector<float> w, glm::vec3 color);
 
 private:
+	unsigned int frameIndex = 0;
 	uint32_t m_Width = 10, m_Height = 10;
 	Camera* m_Camera = nullptr;
 	Scene* m_Scene = nullptr;

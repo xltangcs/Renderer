@@ -1,6 +1,7 @@
 #include "Renderer.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include "Core/Random.h"
 
 namespace Utils
 {
@@ -18,7 +19,7 @@ namespace Utils
 
 Renderer::Renderer()
 {
-	rendermode = Triangle;
+	rendermode = Triangle_MODE;
 
 	m_FinalImage = std::make_shared<Image>(m_Width, m_Height);
 }
@@ -36,10 +37,12 @@ void Renderer::OnResize(unsigned int width, unsigned int height)
 
 void Renderer::Render(Camera& camera, Scene& scene)
 {
+	frameIndex ++ ;
 	if (camera.isCameraMoved || isReset)
 	{
 		memset(m_ImageData, 0, m_FinalImage->GetWidth() * m_FinalImage->GetHeight() * sizeof(uint32_t));
 		isReset = false;
+		frameIndex = 0;
 	}
 
 	m_Camera = &camera;
@@ -48,11 +51,11 @@ void Renderer::Render(Camera& camera, Scene& scene)
 	glm::vec3 color = glm::vec3(1.0f);
 	switch (rendermode)
 	{
-	case Point: RasterizePoint(color);
+	case Point_MODE: RasterizePoint(color);
 		break;
-	case Line: RasterizeLine(color);
+	case Line_MODE: RasterizeLine(color);
 		break;
-	case Triangle: RasterizeTriangle(color);
+	case Triangle_MODE: RasterizeTriangle(color);
 		break;
 	default:
 		break;
@@ -94,11 +97,24 @@ bool Renderer::InsideTriangle(glm::vec2 p, std::vector<glm::vec3> t)
 
 std::tuple<float, float, float> Renderer::computeBarycentric2D(glm::vec2 p, std::vector<glm::vec3> v)
 {
-	float c1 = (p.x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * p.y + v[1].x * v[2].y - v[2].x * v[1].y) / (v[0].x * (v[1].y - v[2].y) + (v[2].x - v[1].x) * v[0].y + v[1].x * v[2].y - v[2].x * v[1].y);
-	float c2 = (p.x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * p.y + v[2].x * v[0].y - v[0].x * v[2].y) / (v[1].x * (v[2].y - v[0].y) + (v[0].x - v[2].x) * v[1].y + v[2].x * v[0].y - v[0].x * v[2].y);
-	float c3 = (p.x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * p.y + v[0].x * v[1].y - v[1].x * v[0].y) / (v[2].x * (v[0].y - v[1].y) + (v[1].x - v[0].x) * v[2].y + v[0].x * v[1].y - v[1].x * v[0].y);
-	return { c1,c2,c3 };
+	glm::vec2 v0 = v[1] - v[0];
+	glm::vec2 v1 = v[2] - v[0];
+	glm::vec2 v2 = p - glm::vec2(v[0]);
+
+	float dot00 = glm::dot(v0, v0);
+	float dot01 = glm::dot(v0, v1);
+	float dot02 = glm::dot(v0, v2);
+	float dot11 = glm::dot(v1, v1);
+	float dot12 = glm::dot(v1, v2);
+
+	float invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+	float alpha = (dot11 * dot02 - dot01 * dot12) * invDenom;
+	float beta = (dot00 * dot12 - dot01 * dot02) * invDenom;
+	float gamma = 1.0f - alpha - beta;
+
+	return std::make_tuple(alpha, beta, gamma);
 }
+
 
 void Renderer::RasterizePoint(glm::vec3 color)
 {
@@ -106,11 +122,11 @@ void Renderer::RasterizePoint(glm::vec3 color)
 
 	for (int i = 0; i < model->nFaces(); i++)
 	{
-		std::vector<int> facei = model->GetFace(i);
+		std::vector<glm::vec3> facei = model->GetFace(i);
 		for (int j = 0; j < 3; j++)
 		{
-			glm::vec3 v0 = model->GetVert(facei[j]);
 
+			glm::vec3 v0 = model->GetVert(facei[j].x);
 			glm::vec4 vv0 = m_Camera->GetProjection() * m_Camera->GetView() * glm::vec4(v0, 1.0f);
 
 			int x0 = vv0.x / vv0.w * m_FinalImage->GetWidth() / 2.0 + m_FinalImage->GetWidth() / 2.0;
@@ -128,11 +144,11 @@ void Renderer::RasterizeLine(glm::vec3 color)
 
 	for (int i = 0; i < model->nFaces(); i++)
 	{
-		std::vector<int> facei = model->GetFace(i);
+		std::vector<glm::vec3> facei = model->GetFace(i);
 		for (int j = 0; j < 3; j++)
 		{
-			glm::vec3 v0 = model->GetVert(facei[j]);
-			glm::vec3 v1 = model->GetVert(facei[(j + 1) % 3]);
+			glm::vec3 v0 = model->GetVert(facei[j].x);
+			glm::vec3 v1 = model->GetVert(facei[(j + 1) % 3].x);
 
 			glm::vec4 vv0 = m_Camera->GetProjection() * m_Camera->GetView() * glm::vec4(v0, 1.0f);
 			glm::vec4 vv1 = m_Camera->GetProjection() * m_Camera->GetView() * glm::vec4(v1, 1.0f);
@@ -153,22 +169,35 @@ void Renderer::RasterizeLine(glm::vec3 color)
 void Renderer::RasterizeTriangle(glm::vec3 color)
 {
 	auto model = m_Scene->m_Models[0];
+	glm::mat4 modelMat(1.0f);
+
 	for (int i = 0; i < model->nFaces(); i++)
 	{
-		std::vector<int> facei = model->GetFace(i);
-		std::vector<glm::vec3> screenCoords(3);
-		std::vector<glm::vec3> modelCoords(3);
+		std::vector<glm::vec3> facei = model->GetFace(i);
+		Triangle t;
+		std::vector<float> w(3);
+
 		for (int i = 0; i < 3; i++)
 		{
-			modelCoords[i] = model->GetVert(facei[i]);
-			glm::vec4 clipCoords = m_Camera->GetProjection() * m_Camera->GetView() * glm::vec4(modelCoords[i], 1.0f);
+			glm::vec3 screenCoords;
+			glm::vec3 modelCoords = model->GetVert(facei[i].x);
+			glm::vec4 clipCoords = m_Camera->GetProjection() * m_Camera->GetView() * modelMat * glm::vec4(modelCoords, 1.0f);
+			
+			screenCoords.x = clipCoords.x / clipCoords.w * m_FinalImage->GetWidth() / 2.0 + m_FinalImage->GetWidth() / 2.0;
+			screenCoords.y = -clipCoords.y / clipCoords.w * m_FinalImage->GetHeight() / 2.0 + m_FinalImage->GetHeight() / 2.0;
+			screenCoords.z = clipCoords.z / clipCoords.w;
 
-			screenCoords[i].x = clipCoords.x / clipCoords.w * m_FinalImage->GetWidth() / 2.0 + m_FinalImage->GetWidth() / 2.0;
-			screenCoords[i].y = -clipCoords.y / clipCoords.w * m_FinalImage->GetHeight() / 2.0 + m_FinalImage->GetHeight() / 2.0;
-			screenCoords[i].z = clipCoords.z / clipCoords.w;
+			w[i] = clipCoords.w;
+
+			t.vert.push_back(screenCoords);
+
+			t.normal.push_back(glm::transpose(m_Camera->GetInverseView())* glm::transpose(glm::inverse(modelMat))* glm::vec4(model->GetNormal(facei[i].z), 0.0f));
+
+			t.uv.push_back(model->GetUV(facei[i].y));
+
 		}
-
-		DrawTriangle(screenCoords, color);
+		
+		DrawTriangle(t, w, color);
 	}
 }
 
@@ -205,24 +234,13 @@ void Renderer::DrawLine(glm::vec2 p1, glm::vec2 p2, glm::vec3 color)
 	DrawPoint(glm::vec2(x1, y1), color);
 }
 
-void Renderer::DrawTriangle(std::vector<glm::vec3> t, glm::vec3 color)
+void Renderer::DrawTriangle(Triangle t, std::vector<float> w, glm::vec3 color)
 {
-	bool IsUseSurperSampling = true;
-
-	//Sample Offset
-	std::vector<glm::vec3> SampleOffset = {
-		{0.25f,0.25f,0},
-		{0.25f,0.75f,0},
-		{0.75f,0.25f,0},
-		{0.75f,0.75f,0}
-	};
-
 	//First: Ceater bounding box
-	float minX = std::max(std::min(t[2].x, std::min(t[0].x, t[1].x)), 0.0f);
-	float maxX = std::min(std::max(t[2].x, std::max(t[0].x, t[1].x)), (float)m_Width);
-
-	float minY = std::max(std::min(t[2].y, std::min(t[0].y, t[1].y)), 0.0f);
-	float maxY = std::min(std::max(t[2].y, std::max(t[0].y, t[1].y)), (float)m_Height);
+	float minX = std::max(std::min(t.vert[2].x, std::min(t.vert[0].x, t.vert[1].x)), 0.0f);
+	float maxX = std::min(std::max(t.vert[2].x, std::max(t.vert[0].x, t.vert[1].x)), (float)m_Width);
+	float minY = std::max(std::min(t.vert[2].y, std::min(t.vert[0].y, t.vert[1].y)), 0.0f);
+	float maxY = std::min(std::max(t.vert[2].y, std::max(t.vert[0].y, t.vert[1].y)), (float)m_Height);
 
 	minX = (int)std::floor(minX); 
 	maxX = (int)std::ceil(maxX); 
@@ -233,20 +251,37 @@ void Renderer::DrawTriangle(std::vector<glm::vec3> t, glm::vec3 color)
 	{
 		for (int j = minY; j < maxY; j++)
 		{
-			int Index = i + j * m_FinalImage->GetWidth();
-			if (InsideTriangle(glm::vec2(i + 0.5f, j + 0.5f), t))
+			int Index = i + j * m_Width;
+			auto [alpha, beta, gamma] = computeBarycentric2D(glm::vec2(i + 0.5f, j + 0.5f), t.vert);
+
+			if (alpha < 0 || beta < 0 || gamma < 0) continue;
+
+			float w_reciprocal = 1.0 / (alpha / w[0] + beta / w[1] + gamma / w[2]);
+			float z_interpolated = alpha * t.vert[0].z / w[0] + beta * t.vert[1].z / w[1] + gamma * t.vert[2].z / w[2];
+			z_interpolated *= w_reciprocal;
+
+			glm::vec3 normal_interpolated = (alpha * t.normal[0] / w[0] + beta * t.normal[1] / w[1] + gamma * t.normal[2] / w[2]) * w_reciprocal;
+			normal_interpolated = glm::normalize(normal_interpolated);
+
+			glm::vec2 uv_interpolated = (alpha * t.uv[0] / w[0] + beta * t.uv[1] / w[1] + gamma * t.uv[2] / w[2]) * w_reciprocal;
+			
+			// check zbuff
+			if (z_interpolated > z_buffer[Index])
 			{
+				z_buffer[Index] = z_interpolated;
 
-				auto [alpha, beta, gamma] = computeBarycentric2D(glm::vec2(i + 0.5f, j + 0.5f), t);
-				float z_interpolated = alpha * t[0].z + beta * t[1].z + gamma * t[2].z;
+				glm::vec3 lightdir = glm::normalize(m_Scene->m_Lights[0].dir);
+				float intensity = glm::dot(-lightdir, normal_interpolated);
 
-				// check zbuff
-				if (z_interpolated > z_buffer[Index])
-				{
-					z_buffer[Index] = z_interpolated;
-					DrawPoint(glm::vec2(i, j), color);
-				}
+				//float intensity = 1.0f;
+
+				glm::vec3 texture_color = m_Scene->texture->GetPixel(uv_interpolated);
+
+				//glm::vec3 nomal_color = m_Scene->m_Lights[0].color * intensity;
+
+				DrawPoint(glm::vec2(i, j), texture_color);
 			}
+			
 		}
 	}
 }

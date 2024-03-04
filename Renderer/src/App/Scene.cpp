@@ -1,5 +1,11 @@
 #include "Scene.h"
 
+Scene::Scene(char* name)
+    : sceneName(name)
+{
+    texture = std::move(std::make_unique<Image>("./assets/models/spot_texture.png"));
+}
+
 int Scene::AddModel(const std::string& filename)
 {
     int id = m_Models.size();
@@ -16,6 +22,13 @@ int Scene::AddModel(const std::string& filename)
         return -1;
     }
 
+    return id;
+}
+
+int Scene::AddLight(Light light)
+{
+    int id = m_Lights.size();
+    m_Lights.emplace_back(light);
     return id;
 }
 
