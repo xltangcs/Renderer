@@ -20,8 +20,12 @@ class Renderer
 {
 public:
 	enum RENDERMODE rendermode;
-	bool isRotate = false;
+	//bool isRotate = false;
 	bool isReset = false;
+
+
+	glm::mat4 modelMatrix = glm::mat4(1.0f);
+
 	
 public:
 	Renderer();;
@@ -58,4 +62,7 @@ private:
 	std::vector<float> z_buffer;
 	//uint8_t* z_buffer = nullptr;
 	bool reset = false;
+
+
+
 };

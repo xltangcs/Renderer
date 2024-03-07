@@ -14,6 +14,7 @@
 
 #include "Core/Camera.h"
 #include "Core/Application.h"
+#include "Core/MyImGui.h"
 
 #include "App/Renderer.h"
 #include "App/Scene/BaseScene.h"
@@ -34,6 +35,8 @@ public:
 
 	virtual void ShowUI(float ts) override
 	{
+		GLFWwindow* window = Application::Get().GetGLFWwindow();
+
 		const char* renderModeName[3] = { "Point", "Line", "Triangle" };
 		ImGui::Begin("Setting");
 
@@ -48,12 +51,32 @@ public:
 		{
 			m_Renderer.isReset = true;
 		}
-
-		if(ImGui::Checkbox("Rotation", &m_Renderer.isRotate)) 
+		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS || glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
 		{
 			m_Renderer.isReset = true;
 		}
+
+		static glm::vec3 rotation(0.0f);
+		static glm::vec3 translate (0.0f);
+		static glm::vec3 scale(1.0f);
+		//ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.01f, 0.01f);
+		//ImGui::DragFloat3("Rotation", glm::value_ptr(rotation));
+		//ImGui::DragFloat3("Translate", glm::value_ptr(translate), 0.01f);
+
+		MyImGui::DrawVec3Control("Scale", scale, 1.0f);
+		MyImGui::DrawVec3Control("Rotation", rotation);
+		MyImGui::DrawVec3Control("Translate", translate);
 		
+
+		m_Renderer.modelMatrix = glm::mat4(1.0f);
+		m_Renderer.modelMatrix = glm::translate(m_Renderer.modelMatrix, translate) *
+			glm::rotate(m_Renderer.modelMatrix, rotation.x, glm::vec3(1.0, 0.0, 0.0)) *
+			glm::rotate(m_Renderer.modelMatrix, rotation.y, glm::vec3(0.0, 1.0, 0.0)) *
+			glm::rotate(m_Renderer.modelMatrix, rotation.z, glm::vec3(0.0, 0.0, 1.0)) *
+			glm::scale(m_Renderer.modelMatrix, scale);
+
+		
+
 		ImGui::End();
 
 		ImGui::Begin("Viewport");

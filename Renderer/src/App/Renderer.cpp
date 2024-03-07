@@ -45,12 +45,12 @@ void Renderer::Render(Camera& camera, Scene& scene)
 {
 	std::fill(z_buffer.begin(), z_buffer.end(), std::numeric_limits<float>::infinity());
 	frameIndex ++ ;
+	//memset(m_ImageData, 0, m_FinalImage->GetWidth() * m_FinalImage->GetHeight() * sizeof(uint32_t));
 
-	if (camera.isCameraMoved || isRotate || isReset)
+	if (camera.isCameraMoved || isReset)
 	{
 		memset(m_ImageData, 0, m_FinalImage->GetWidth() * m_FinalImage->GetHeight() * sizeof(uint32_t));
 		isReset = false;
-		if(!isRotate)
 			frameIndex = 0;
 	}
 
@@ -184,9 +184,6 @@ void Renderer::RasterizeLine(glm::vec3 color)
 void Renderer::RasterizeTriangle(glm::vec3 color)
 {
 	auto model = m_Scene->m_Models[0];
-	glm::mat4 modelMat(1.0f);
-	if(isRotate)
-	modelMat = glm::rotate(modelMat, (float)frameIndex * 0.1f, glm::vec3(0.0, 1.0, 0.0));
 
 	for (int i = 0; i < model->nFaces(); i++)
 	{
@@ -201,7 +198,7 @@ void Renderer::RasterizeTriangle(glm::vec3 color)
 
 			//viewPos.push_back(glm::vec3(m_Camera->GetView() * modelMat * glm::vec4(modelPos, 1.0f)));
 
-			glm::vec4 clipPos = m_Camera->GetProjection() * m_Camera->GetView() * modelMat * glm::vec4(modelPos, 1.0f);
+			glm::vec4 clipPos = m_Camera->GetProjection() * m_Camera->GetView() * modelMatrix * glm::vec4(modelPos, 1.0f);
 
 			glm::vec3 screenCoords;
 			
@@ -213,7 +210,7 @@ void Renderer::RasterizeTriangle(glm::vec3 color)
 
 			t.vert.push_back(screenCoords);
 
-			t.normal.push_back(glm::transpose(m_Camera->GetInverseView())* glm::transpose(glm::inverse(modelMat))* glm::vec4(model->GetNormal(facei[i].z), 0.0f));
+			t.normal.push_back(glm::transpose(m_Camera->GetInverseView())* glm::transpose(glm::inverse(modelMatrix))* glm::vec4(model->GetNormal(facei[i].z), 0.0f));
 			
 			t.uv.push_back(model->GetUV(facei[i].y));
 
