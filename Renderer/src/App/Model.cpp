@@ -9,10 +9,10 @@ Model::Model(const char* filename)
     LoadModel(filename);
 }
 
-bool Model::LoadModel(const char* filename)
+bool Model::LoadModel(std::string filename)
 {
     std::ifstream in;
-    in.open(filename, std::ifstream::in);
+    in.open(filename.c_str(), std::ifstream::in);
     if (in.fail())
     {
         printf("Failed to load model %s", filename);
@@ -53,19 +53,19 @@ bool Model::LoadModel(const char* filename)
             faces.push_back(f);
         }
     }
+
+
     //std::cout << "# v# " << verts.size() << " f# " << faces.size() << " vt# " << uvs.size() << " vn# " << normals.size() << std::endl;
-    //load_texture(filename, "_diffuse.tga", diffusemap_);
+
+    diffusImage = LoadTexture( (filename.substr(0, filename.length() - 4)) + std::string("_diffuse.png"));
     //load_texture(filename, "_nm.tga", normalmap_);
     //load_texture(filename, "_spec.tga", specularmap_);
     return true;
 }
 
-//std::vector<int> Model::GetFace(int index)
-//{
-//    std::vector<int> face;
-//    for (int i = 0; i < (int)faces[index].size(); i++)
-//        face.push_back(faces[index][i][0]);
-//    return face;
-//    
-//}
+std::unique_ptr<Image> Model::LoadTexture(std::string filename)
+{
+
+    return std::make_unique<Image>(filename);
+}
 

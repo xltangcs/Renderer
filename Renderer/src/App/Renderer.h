@@ -20,7 +20,9 @@ class Renderer
 {
 public:
 	enum RENDERMODE rendermode;
+	bool isRotate = false;
 	bool isReset = false;
+	
 public:
 	Renderer();;
 	~Renderer() = default;
@@ -43,7 +45,7 @@ private:
 
 	void DrawPoint(glm::vec2 p, glm::vec3 color);
 	void DrawLine(glm::vec2 p0, glm::vec2 p1, glm::vec3 color);
-	void Renderer::DrawTriangle(Triangle t, std::vector<float> w, glm::vec3 color);
+	void Renderer::DrawTriangle(Triangle t, std::vector<glm::vec3> viewPos, std::vector<float> w, glm::vec3 color);
 
 private:
 	unsigned int frameIndex = 0;
@@ -53,6 +55,7 @@ private:
 	std::shared_ptr<Image> m_FinalImage = nullptr;
 
 	uint32_t* m_ImageData = nullptr;
-	uint8_t* z_buffer = nullptr;
+	std::vector<float> z_buffer;
+	//uint8_t* z_buffer = nullptr;
 	bool reset = false;
 };

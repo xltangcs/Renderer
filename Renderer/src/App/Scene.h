@@ -36,7 +36,6 @@ public:
 	char* sceneName;
 	std::vector<std::shared_ptr<Model>> m_Models;
 	std::vector<Light> m_Lights;
-	std::shared_ptr<Image> texture;
 public:
 	Scene(char* name = "Scene");
 	~Scene() = default;

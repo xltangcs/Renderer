@@ -48,6 +48,11 @@ public:
 		{
 			m_Renderer.isReset = true;
 		}
+
+		if(ImGui::Checkbox("Rotation", &m_Renderer.isRotate)) 
+		{
+			m_Renderer.isReset = true;
+		}
 		
 		ImGui::End();
 

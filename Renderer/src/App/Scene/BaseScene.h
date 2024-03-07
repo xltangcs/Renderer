@@ -6,7 +6,7 @@ Scene CreatBaseScene()
 {
 	Scene scene("Base Scene");
 
-	int modelID = scene.AddModel("./assets/models/spot_triangulated_good.obj");
+	int modelID = scene.AddModel("./assets/models/african_head.obj");
 
 	Light redlight;
 	redlight.color = glm::vec3(1.0f);

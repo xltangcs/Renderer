@@ -3,7 +3,7 @@
 Scene::Scene(char* name)
     : sceneName(name)
 {
-    texture = std::move(std::make_unique<Image>("./assets/models/spot_texture.png"));
+
 }
 
 int Scene::AddModel(const std::string& filename)

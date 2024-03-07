@@ -83,7 +83,7 @@ void Image::SetPixel(int x, int y, glm::vec3 color)
 glm::vec3 Image::GetPixel(glm::vec2 uv)
 {
     int x = static_cast<int>(uv.x * m_Width);
-    int y = static_cast<int>(uv.y * m_Height);
+    int y = static_cast<int>((1.0f- uv.y) * m_Height);
 
     // Ensure coordinates are within bounds
     x = glm::clamp(x, 0, (int)(m_Width - 1));
