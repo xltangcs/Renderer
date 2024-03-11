@@ -3,6 +3,7 @@
 #include <memory>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Core/Geometry/BufferGeometry.h"
 #include "Core/Image.h"
 #include "App/Model.h"
 #include "App/Triangle.h"
@@ -26,21 +27,31 @@ struct Light
 	glm::vec3 color;
 
 	glm::vec3 position;
-	glm::vec3 dir;
+	glm::vec3 direction;
 
+};
+
+enum OBJECTTYPE
+{
+	MODELOBJ = 0,
+	GEOMETRYOBJ = 1
 };
 
 class Scene
 {
 public:
 	char* sceneName;
+	enum OBJECTTYPE objtype;
+	glm::vec3 baseColor = glm::vec3(1.0);
 	std::vector<std::shared_ptr<Model>> m_Models;
 	std::vector<Light> m_Lights;
+	std::vector<Triangle> m_Triangles;
 public:
 	Scene(char* name = "Scene");
 	~Scene() = default;
 
 	int AddModel(const std::string& filename);
+	int AddGeometry(const BufferGeometry& geo);
 	int AddLight(Light light);
 
 	void ProcessScene();

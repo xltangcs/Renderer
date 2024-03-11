@@ -18,6 +18,7 @@
 
 #include "App/Renderer.h"
 #include "App/Scene/BaseScene.h"
+#include "App/Scene/PBRScene.h"
 
 class MyImGuiLayer : public ImGuiLayer
 {
@@ -25,7 +26,13 @@ public:
 	MyImGuiLayer()
 		:m_Camera(45.0f, 0.1f, 100.0f)
 	{
-		m_Scene = CreatBaseScene();
+		m_SceneNames.push_back("PBR Scene");
+		createScenePtrs.push_back(PBRScene);
+
+		m_SceneNames.push_back("Base Scene");
+		createScenePtrs.push_back(BaseScene);
+
+		m_Scene = BaseScene();
 	}
 
 	virtual void OnUpdate(float ts) override
@@ -47,6 +54,9 @@ public:
 		ImGui::Checkbox("Camera Rotation", &m_Camera.GetIsRotation());
 		ImGui::Separator();
 
+		ImGui::Combo("Scene", &m_SceneIndex, m_SceneNames.data(), m_SceneNames.size());
+		ImGui::Text("The number of triangles in the scene is : %d", m_Scene.m_Triangles.size());
+
 		if (ImGui::Combo("Render Mode", (int*)&m_Renderer.rendermode, renderModeName, 3))
 		{
 			m_Renderer.isReset = true;
@@ -63,10 +73,14 @@ public:
 		//ImGui::DragFloat3("Rotation", glm::value_ptr(rotation));
 		//ImGui::DragFloat3("Translate", glm::value_ptr(translate), 0.01f);
 
+
 		MyImGui::DrawVec3Control("Scale", scale, 1.0f);
 		MyImGui::DrawVec3Control("Rotation", rotation);
 		MyImGui::DrawVec3Control("Translate", translate);
 		
+		ImGui::DragFloat3("Light position", glm::value_ptr(m_Scene.m_Lights[0].position));
+		ImGui::DragFloat3("Light Direction", glm::value_ptr(m_Scene.m_Lights[0].direction));
+		ImGui::ColorEdit3("Light color", glm::value_ptr(m_Scene.m_Lights[0].color));
 
 		m_Renderer.modelMatrix = glm::mat4(1.0f);
 		m_Renderer.modelMatrix = glm::translate(m_Renderer.modelMatrix, translate) *
@@ -78,6 +92,8 @@ public:
 		
 
 		ImGui::End();
+
+		ImGui::ShowDemoWindow();
 
 		ImGui::Begin("Viewport");
 
@@ -97,11 +113,25 @@ public:
 		m_Renderer.OnResize(m_Width, m_Height);
 		m_Camera.OnResize(m_Width, m_Height);
 
+		if (m_CurrentIndex != m_SceneIndex)
+		{
+			m_CurrentIndex = m_SceneIndex;
+			m_Scene = createScenePtrs[m_CurrentIndex]();
+			m_Renderer.isReset = true;
+		}
+
 		m_Renderer.Render(m_Camera, m_Scene);
+		//m_Renderer.isReset = false;
+
 	}
 
 private:
 	unsigned int m_Width = 10, m_Height = 10;
+
+	std::vector<const char*> m_SceneNames;
+	std::vector<Scene(*)()> createScenePtrs;
+	int m_SceneIndex = 0;
+	int m_CurrentIndex = -1;
 
 	Camera m_Camera;
 	Scene m_Scene;

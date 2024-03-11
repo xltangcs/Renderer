@@ -20,6 +20,7 @@ namespace Utils
 Renderer::Renderer()
 {
 	rendermode = Triangle_MODE;
+	lightmodelmode = Lambert;
 
 	m_FinalImage = std::make_shared<Image>(m_Width, m_Height);
 	z_buffer.resize(m_Width * m_Height);
@@ -51,7 +52,7 @@ void Renderer::Render(Camera& camera, Scene& scene)
 	{
 		memset(m_ImageData, 0, m_FinalImage->GetWidth() * m_FinalImage->GetHeight() * sizeof(uint32_t));
 		isReset = false;
-			frameIndex = 0;
+		frameIndex = 0;
 	}
 
 	m_Camera = &camera;
@@ -73,6 +74,16 @@ void Renderer::Render(Camera& camera, Scene& scene)
 	m_FinalImage->SetData(m_ImageData);
 }
 
+
+glm::vec3 Renderer::CalculateLambertColor(float kd, glm::vec3 normal, Light light)
+{
+	normal = glm::normalize(normal);
+	glm::vec3 dir = glm::normalize(light.direction);
+	glm::vec3 color = light.color* kd * std::max(glm::dot(normal, -dir), 0.0f);
+
+	return color;
+}
+
 void Renderer::ResetData()
 {
 	delete[] m_ImageData;
@@ -80,8 +91,6 @@ void Renderer::ResetData()
 	memset(m_ImageData, 0, m_Width * m_Height * sizeof(uint32_t));
 
 	z_buffer.resize(m_Width * m_Height);
-	
-
 }
 
 bool Renderer::InsideTriangle(glm::vec2 p, std::vector<glm::vec3> t)
@@ -133,15 +142,12 @@ std::tuple<float, float, float> Renderer::computeBarycentric2D(glm::vec2 p, std:
 
 void Renderer::RasterizePoint(glm::vec3 color)
 {
-	auto model = m_Scene->m_Models[0];
-
-	for (int i = 0; i < model->nFaces(); i++)
+	for(auto triangle : m_Scene->m_Triangles)
 	{
-		std::vector<glm::vec3> facei = model->GetFace(i);
+		//std::vector<glm::vec3> facei = model->GetFace(i);
 		for (int j = 0; j < 3; j++)
 		{
-
-			glm::vec3 v0 = model->GetVert(facei[j].x);
+			glm::vec3 v0 = triangle.vert[j];
 			glm::vec4 vv0 = m_Camera->GetProjection() * m_Camera->GetView() * glm::vec4(v0, 1.0f);
 
 			int x0 = vv0.x / vv0.w * m_FinalImage->GetWidth() / 2.0 + m_FinalImage->GetWidth() / 2.0;
@@ -155,15 +161,12 @@ void Renderer::RasterizePoint(glm::vec3 color)
 
 void Renderer::RasterizeLine(glm::vec3 color)
 {
-	auto model = m_Scene->m_Models[0];
-
-	for (int i = 0; i < model->nFaces(); i++)
+	for (auto triangle : m_Scene->m_Triangles)
 	{
-		std::vector<glm::vec3> facei = model->GetFace(i);
 		for (int j = 0; j < 3; j++)
 		{
-			glm::vec3 v0 = model->GetVert(facei[j].x);
-			glm::vec3 v1 = model->GetVert(facei[(j + 1) % 3].x);
+			glm::vec3 v0 = triangle.vert[j];
+			glm::vec3 v1 = triangle.vert[(j + 1) % 3];
 
 			glm::vec4 vv0 = m_Camera->GetProjection() * m_Camera->GetView() * glm::vec4(v0, 1.0f);
 			glm::vec4 vv1 = m_Camera->GetProjection() * m_Camera->GetView() * glm::vec4(v1, 1.0f);
@@ -183,18 +186,15 @@ void Renderer::RasterizeLine(glm::vec3 color)
 
 void Renderer::RasterizeTriangle(glm::vec3 color)
 {
-	auto model = m_Scene->m_Models[0];
-
-	for (int i = 0; i < model->nFaces(); i++)
+	for (auto triangle : m_Scene->m_Triangles)
 	{
-		std::vector<glm::vec3> facei = model->GetFace(i);
 		Triangle t;
 		std::vector<float> w(3);
 		std::vector<glm::vec3> viewPos;
 
 		for (int i = 0; i < 3; i++)
 		{
-			glm::vec3 modelPos = model->GetVert(facei[i].x);
+			glm::vec3 modelPos = triangle.vert[i];
 
 			//viewPos.push_back(glm::vec3(m_Camera->GetView() * modelMat * glm::vec4(modelPos, 1.0f)));
 
@@ -210,9 +210,9 @@ void Renderer::RasterizeTriangle(glm::vec3 color)
 
 			t.vert.push_back(screenCoords);
 
-			t.normal.push_back(glm::transpose(m_Camera->GetInverseView())* glm::transpose(glm::inverse(modelMatrix))* glm::vec4(model->GetNormal(facei[i].z), 0.0f));
+			t.normal.push_back(glm::transpose(m_Camera->GetInverseView())* glm::transpose(glm::inverse(modelMatrix))* glm::vec4(triangle.normal[i], 0.0f));
 			
-			t.uv.push_back(model->GetUV(facei[i].y));
+			t.uv.push_back(triangle.uv[i]);
 
 		}
 		
@@ -291,15 +291,37 @@ void Renderer::DrawTriangle(Triangle t, std::vector<glm::vec3> viewPos, std::vec
 			if (z_interpolated < z_buffer[Index])
 			{
 				z_buffer[Index] = z_interpolated;
+				auto light = m_Scene->m_Lights[0];
 
-				glm::vec3 lightdir = glm::normalize(m_Scene->m_Lights[0].dir);
-				float intensity = glm::dot(-lightdir, normal_interpolated);
+				glm::vec3 color = glm::vec3(0.0);
+				glm::vec3 baseColor = glm::vec3(1.0);
+				switch (m_Scene->objtype)
+				{
+				case MODELOBJ : baseColor = m_Scene->m_Models[0]->diffusImage->GetPixel(uv_interpolated);
+					break;
+				case GEOMETRYOBJ: baseColor = m_Scene->baseColor;
+				default:
+					break;
+				}
 
-				glm::vec3 texture_color = m_Scene->m_Models[0]->diffusImage->GetPixel(uv_interpolated);
+				switch (lightmodelmode)
+				{
+				case Lambert: color = baseColor * CalculateLambertColor(1.0, normal_interpolated, light);
+					break;
+				case Phong:
+					break;
+				case Blin_Phong:
+					break;
+				case PBR:
+					break;
+				default:
+					break;
+				}
 
-				glm::vec3 nomal_color = m_Scene->m_Lights[0].color * intensity;
 
-				DrawPoint(glm::vec2(i, j), texture_color);
+
+
+				DrawPoint(glm::vec2(i, j), color);
 			}
 			
 		}

@@ -1,13 +1,17 @@
 #pragma once
 
 #include "App/Scene.h"
+#include "Core/Geometry/SphereGeometry.h"
 
-Scene BaseScene()
+Scene PBRScene()
 {
-	Scene scene("Base Scene");
-	scene.objtype = MODELOBJ;
+	Scene scene("PBR Scene");
+	scene.objtype = GEOMETRYOBJ;
 
-	int modelID = scene.AddModel("./assets/models/african_head.obj");
+	SphereGeometry geo(0.5, 32, 32);
+
+	scene.AddGeometry(geo);
+	scene.baseColor = glm::vec3(0.7, 0.2, 0.2);
 
 	Light redlight;
 	redlight.color = glm::vec3(1.0f);

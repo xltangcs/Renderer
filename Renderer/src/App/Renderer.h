@@ -15,11 +15,21 @@ enum RENDERMODE
 	Triangle_MODE = 2
 };
 
+enum LIGHTMODELMODE
+{
+	Lambert = 0,
+	Phong = 1,
+	Blin_Phong = 2,
+	PBR = 3
+};
+
+
 
 class Renderer
 {
 public:
 	enum RENDERMODE rendermode;
+	enum LIGHTMODELMODE lightmodelmode;
 	//bool isRotate = false;
 	bool isReset = false;
 
@@ -37,11 +47,12 @@ public:
 	std::shared_ptr<Image> GetImage() const { return  m_FinalImage; }
 private:
 
+	glm::vec3 CalculateLambertColor(float kd, glm::vec3 normal, Light light);
+
 	void ResetData();
 
 	bool InsideTriangle(glm::vec2 p, std::vector<glm::vec3> t);
 	std::tuple<float, float, float> computeBarycentric2D(glm::vec2 p, std::vector<glm::vec3> t);
-
 
 	void RasterizePoint(glm::vec3 color);
 	void RasterizeLine(glm::vec3 color);
