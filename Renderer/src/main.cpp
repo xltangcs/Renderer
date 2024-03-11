@@ -45,6 +45,8 @@ public:
 		GLFWwindow* window = Application::Get().GetGLFWwindow();
 
 		const char* renderModeName[3] = { "Point", "Line", "Triangle" };
+		const char* shaderModeName[4] = { "Lambert", "Phong", "Blin-Phong", "PBR"};
+
 		ImGui::Begin("Setting");
 
 		ImGui::Text("The average fps: %.3f", ImGui::GetIO().Framerate);
@@ -58,6 +60,10 @@ public:
 		ImGui::Text("The number of triangles in the scene is : %d", m_Scene.m_Triangles.size());
 
 		if (ImGui::Combo("Render Mode", (int*)&m_Renderer.rendermode, renderModeName, 3))
+		{
+			m_Renderer.isReset = true;
+		}
+		if (ImGui::Combo("Shader Mode", (int*)&m_Renderer.lightmodelmode, shaderModeName, 3))
 		{
 			m_Renderer.isReset = true;
 		}

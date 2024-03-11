@@ -20,7 +20,7 @@ namespace Utils
 Renderer::Renderer()
 {
 	rendermode = Triangle_MODE;
-	lightmodelmode = Lambert;
+	lightmodelmode = Phong;
 
 	m_FinalImage = std::make_shared<Image>(m_Width, m_Height);
 	z_buffer.resize(m_Width * m_Height);
@@ -75,18 +75,54 @@ void Renderer::Render(Camera& camera, Scene& scene)
 }
 
 
-glm::vec3 Renderer::CalculateLambertColor(float kd, glm::vec3 viewPos, glm::vec3 normal, Light light)
+glm::vec3 Renderer::CalculateLambertColor(glm::vec3 worldPos, glm::vec3 normal, Light light)
 {
+	float kd = 1.0f;
 	normal = glm::normalize(normal);
-	glm::vec3 dir = glm::normalize(light.position - viewPos);
+	glm::vec3 dir = glm::normalize(light.position - worldPos);
 	glm::vec3 color = light.color* kd * std::max(glm::dot(normal, dir), 0.0f);
 
 	return color;
 }
 
-glm::vec3 Renderer::CalculatePhongtColor(float kd, glm::vec3 normal, Light light)
+glm::vec3 Renderer::CalculatePhongtColor( glm::vec3 worldPos, glm::vec3 normal, Light light)
 {
-	return glm::vec3();
+	glm::vec3 N = glm::normalize(normal);
+	glm::vec3 L = glm::normalize(light.position - worldPos);
+	glm::vec3 R = glm::reflect(L, N);
+	glm::vec3 V = glm::normalize(m_Camera->GetPosition() - worldPos);
+
+	float ka = 0.1;
+	glm::vec3 ambient = ka * light.color;
+
+	float kd = 1.0f;
+	glm::vec3 diffuse = kd * std::max(glm::dot(N, L), 0.0f) * light.color;
+
+	float ks = 0.5;
+	glm::vec3 specular = ks * (float)glm::pow(std::max(glm::dot(R, V), 0.0f), 32) * light.color;
+
+	return ambient + diffuse + specular;
+}
+
+glm::vec3 Renderer::CalculateBlin_PhongtColor(glm::vec3 worldPos, glm::vec3 normal, Light light)
+{
+	glm::vec3 N = glm::normalize(normal);
+	glm::vec3 L = glm::normalize(light.position - worldPos);
+	//glm::vec3 R = glm::reflect(L, N);
+	glm::vec3 V = glm::normalize(m_Camera->GetPosition() - worldPos);
+	glm::vec3 H = glm::normalize(L+V);
+
+	float ka = 0.1;
+	glm::vec3 ambient = ka * light.color;
+
+	float kd = 1.0f;
+	glm::vec3 diffuse = kd * std::max(glm::dot(N, L), 0.0f) * light.color;
+
+	float ks = 0.5;
+	glm::vec3 specular = ks * (float)glm::pow(std::max(glm::dot(N, H), 0.0f), 32) * light.color;
+
+	return ambient + diffuse + specular;
+
 }
 
 void Renderer::ResetData()
@@ -195,13 +231,13 @@ void Renderer::RasterizeTriangle(glm::vec3 color)
 	{
 		Triangle t;
 		std::vector<float> w(3);
-		std::vector<glm::vec3> viewPos;
+		std::vector<glm::vec3> worldPos;
 
 		for (int i = 0; i < 3; i++)
 		{
 			glm::vec3 modelPos = triangle.vert[i];
 
-			viewPos.push_back(glm::vec3(m_Camera->GetView() * modelMatrix * glm::vec4(modelPos, 1.0f)));
+			worldPos.push_back(glm::vec3(modelMatrix * glm::vec4(modelPos, 1.0f)));
 
 			glm::vec4 clipPos = m_Camera->GetProjection() * m_Camera->GetView() * modelMatrix * glm::vec4(modelPos, 1.0f);
 
@@ -221,7 +257,7 @@ void Renderer::RasterizeTriangle(glm::vec3 color)
 
 		}
 		
-		DrawTriangle(t, viewPos, w, color);
+		DrawTriangle(t, worldPos, w, color);
 	}
 }
 
@@ -258,7 +294,7 @@ void Renderer::DrawLine(glm::vec2 p1, glm::vec2 p2, glm::vec3 color)
 	DrawPoint(glm::vec2(x1, y1), color);
 }
 
-void Renderer::DrawTriangle(Triangle t, std::vector<glm::vec3> viewPos, std::vector<float> w, glm::vec3 color)
+void Renderer::DrawTriangle(Triangle t, std::vector<glm::vec3> worldPos, std::vector<float> w, glm::vec3 color)
 {
 	//First: Ceater bounding box
 	float minX = std::max(std::min(t.vert[2].x, std::min(t.vert[0].x, t.vert[1].x)), 0.0f);
@@ -287,7 +323,7 @@ void Renderer::DrawTriangle(Triangle t, std::vector<glm::vec3> viewPos, std::vec
 
 			float z_interpolated = (alpha * t.vert[0].z / w[0] + beta * t.vert[1].z / w[1] + gamma * t.vert[2].z / w[2]) * Z; 
 			glm::vec3 normal_interpolated = (alpha * t.normal[0] / w[0] + beta * t.normal[1] / w[1] + gamma * t.normal[2] / w[2]) * Z;
-			glm::vec3 viewPos_interpolated = (alpha * viewPos[0] / w[0] + beta * viewPos[1] / w[1] + gamma * viewPos[2] / w[2]) * Z;
+			glm::vec3 worldPos_interpolated = (alpha * worldPos[0] / w[0] + beta * worldPos[1] / w[1] + gamma * worldPos[2] / w[2]) * Z;
 			
 			normal_interpolated = glm::normalize(normal_interpolated);
 
@@ -306,17 +342,18 @@ void Renderer::DrawTriangle(Triangle t, std::vector<glm::vec3> viewPos, std::vec
 				case MODELOBJ : baseColor = m_Scene->m_Models[0]->diffusImage->GetPixel(uv_interpolated);
 					break;
 				case GEOMETRYOBJ: baseColor = m_Scene->baseColor;
+					break;
 				default:
 					break;
 				}
 
 				switch (lightmodelmode)
 				{
-				case Lambert: color = baseColor * CalculateLambertColor(1.0, viewPos_interpolated, normal_interpolated, light);
+				case Lambert: color = baseColor * CalculateLambertColor(worldPos_interpolated, normal_interpolated, light);
 					break;
-				case Phong: color = baseColor * CalculatePhongtColor(1.0, normal_interpolated, light);
+				case Phong: color = baseColor * CalculatePhongtColor(worldPos_interpolated, normal_interpolated, light);
 					break;
-				case Blin_Phong:
+				case Blin_Phong: color = baseColor * CalculateBlin_PhongtColor(worldPos_interpolated, normal_interpolated, light);
 					break;
 				case PBR:
 					break;
