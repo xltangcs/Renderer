@@ -79,7 +79,6 @@ public:
 		MyImGui::DrawVec3Control("Translate", translate);
 		
 		ImGui::DragFloat3("Light position", glm::value_ptr(m_Scene.m_Lights[0].position));
-		ImGui::DragFloat3("Light Direction", glm::value_ptr(m_Scene.m_Lights[0].direction));
 		ImGui::ColorEdit3("Light color", glm::value_ptr(m_Scene.m_Lights[0].color));
 
 		m_Renderer.modelMatrix = glm::mat4(1.0f);

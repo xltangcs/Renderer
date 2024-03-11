@@ -75,13 +75,18 @@ void Renderer::Render(Camera& camera, Scene& scene)
 }
 
 
-glm::vec3 Renderer::CalculateLambertColor(float kd, glm::vec3 normal, Light light)
+glm::vec3 Renderer::CalculateLambertColor(float kd, glm::vec3 viewPos, glm::vec3 normal, Light light)
 {
 	normal = glm::normalize(normal);
-	glm::vec3 dir = glm::normalize(light.direction);
-	glm::vec3 color = light.color* kd * std::max(glm::dot(normal, -dir), 0.0f);
+	glm::vec3 dir = glm::normalize(light.position - viewPos);
+	glm::vec3 color = light.color* kd * std::max(glm::dot(normal, dir), 0.0f);
 
 	return color;
+}
+
+glm::vec3 Renderer::CalculatePhongtColor(float kd, glm::vec3 normal, Light light)
+{
+	return glm::vec3();
 }
 
 void Renderer::ResetData()
@@ -196,7 +201,7 @@ void Renderer::RasterizeTriangle(glm::vec3 color)
 		{
 			glm::vec3 modelPos = triangle.vert[i];
 
-			//viewPos.push_back(glm::vec3(m_Camera->GetView() * modelMat * glm::vec4(modelPos, 1.0f)));
+			viewPos.push_back(glm::vec3(m_Camera->GetView() * modelMatrix * glm::vec4(modelPos, 1.0f)));
 
 			glm::vec4 clipPos = m_Camera->GetProjection() * m_Camera->GetView() * modelMatrix * glm::vec4(modelPos, 1.0f);
 
@@ -282,6 +287,7 @@ void Renderer::DrawTriangle(Triangle t, std::vector<glm::vec3> viewPos, std::vec
 
 			float z_interpolated = (alpha * t.vert[0].z / w[0] + beta * t.vert[1].z / w[1] + gamma * t.vert[2].z / w[2]) * Z; 
 			glm::vec3 normal_interpolated = (alpha * t.normal[0] / w[0] + beta * t.normal[1] / w[1] + gamma * t.normal[2] / w[2]) * Z;
+			glm::vec3 viewPos_interpolated = (alpha * viewPos[0] / w[0] + beta * viewPos[1] / w[1] + gamma * viewPos[2] / w[2]) * Z;
 			
 			normal_interpolated = glm::normalize(normal_interpolated);
 
@@ -306,9 +312,9 @@ void Renderer::DrawTriangle(Triangle t, std::vector<glm::vec3> viewPos, std::vec
 
 				switch (lightmodelmode)
 				{
-				case Lambert: color = baseColor * CalculateLambertColor(1.0, normal_interpolated, light);
+				case Lambert: color = baseColor * CalculateLambertColor(1.0, viewPos_interpolated, normal_interpolated, light);
 					break;
-				case Phong:
+				case Phong: color = baseColor * CalculatePhongtColor(1.0, normal_interpolated, light);
 					break;
 				case Blin_Phong:
 					break;
