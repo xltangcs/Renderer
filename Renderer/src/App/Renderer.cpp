@@ -3,6 +3,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Core/Random.h"
 
+extern float metallic;
+extern float roughness;
+extern float ao;
+
 namespace Utils
 {
 	static uint32_t ConvertToRGBA(const glm::vec4& color)
@@ -15,12 +19,54 @@ namespace Utils
 		uint32_t result = (a << 24) | (b << 16) | (g << 8) | r;
 		return result;
 	}
+
+
+	float DistributionGGX(glm::vec3 N, glm::vec3 H, float roughness)
+	{
+		float a = roughness * roughness;
+		float a2 = a * a;
+		float NdotH = std::max(glm::dot(N, H), 0.0f);
+		float NdotH2 = NdotH * NdotH;
+
+		float num = a2;
+		float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+		denom = PI * denom * denom;
+
+		return num / denom;
+	}
+
+	float GeometrySchlickGGX(float NdotV, float roughness)
+	{
+		float r = (roughness + 1.0);
+		float k = (r * r) / 8.0;
+
+		float num = NdotV;
+		float denom = NdotV * (1.0 - k) + k;
+
+		return num / denom;
+	}
+
+	float GeometrySmith(glm::vec3 N, glm::vec3 V, glm::vec3 L, float roughness)
+	{
+		float NdotV = std::max(glm::dot(N, V), 0.0f);
+		float NdotL = std::max(glm::dot(N, L), 0.0f);
+		float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+		float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+		return ggx1 * ggx2;
+	}
+
+	glm::vec3 fresnelSchlick(float cosTheta, glm::vec3 F0)
+	{
+		return F0 + (glm::vec3(1.0) - F0) * pow(1.0f - cosTheta, 5.0f);
+	}
+
 }
 
 Renderer::Renderer()
 {
 	rendermode = Triangle_MODE;
-	lightmodelmode = Phong;
+	lightmodelmode = PBR;
 
 	m_FinalImage = std::make_shared<Image>(m_Width, m_Height);
 	z_buffer.resize(m_Width * m_Height);
@@ -85,15 +131,15 @@ glm::vec3 Renderer::CalculateLambertColor(glm::vec3 worldPos, glm::vec3 normal, 
 	return color;
 }
 
-glm::vec3 Renderer::CalculatePhongtColor( glm::vec3 worldPos, glm::vec3 normal, Light light)
+glm::vec3 Renderer::CalculatePhongColor( glm::vec3 worldPos, glm::vec3 normal, Light light)
 {
 	glm::vec3 N = glm::normalize(normal);
 	glm::vec3 L = glm::normalize(light.position - worldPos);
-	glm::vec3 R = glm::reflect(L, N);
+	glm::vec3 R = glm::normalize(glm::reflect(L, N));
 	glm::vec3 V = glm::normalize(m_Camera->GetPosition() - worldPos);
 
 	float ka = 0.1;
-	glm::vec3 ambient = ka * light.color;
+	glm::vec3 ambient = ka * glm::vec3(0.1, 0.1, 0.1);
 
 	float kd = 1.0f;
 	glm::vec3 diffuse = kd * std::max(glm::dot(N, L), 0.0f) * light.color;
@@ -104,7 +150,7 @@ glm::vec3 Renderer::CalculatePhongtColor( glm::vec3 worldPos, glm::vec3 normal, 
 	return ambient + diffuse + specular;
 }
 
-glm::vec3 Renderer::CalculateBlin_PhongtColor(glm::vec3 worldPos, glm::vec3 normal, Light light)
+glm::vec3 Renderer::CalculateBlin_PhongColor(glm::vec3 worldPos, glm::vec3 normal, Light light)
 {
 	glm::vec3 N = glm::normalize(normal);
 	glm::vec3 L = glm::normalize(light.position - worldPos);
@@ -113,7 +159,7 @@ glm::vec3 Renderer::CalculateBlin_PhongtColor(glm::vec3 worldPos, glm::vec3 norm
 	glm::vec3 H = glm::normalize(L+V);
 
 	float ka = 0.1;
-	glm::vec3 ambient = ka * light.color;
+	glm::vec3 ambient = ka * glm::vec3(0.1, 0.1, 0.1);
 
 	float kd = 1.0f;
 	glm::vec3 diffuse = kd * std::max(glm::dot(N, L), 0.0f) * light.color;
@@ -122,7 +168,58 @@ glm::vec3 Renderer::CalculateBlin_PhongtColor(glm::vec3 worldPos, glm::vec3 norm
 	glm::vec3 specular = ks * (float)glm::pow(std::max(glm::dot(N, H), 0.0f), 32) * light.color;
 
 	return ambient + diffuse + specular;
+}
 
+glm::vec3 Renderer::CalculatePBRColor(glm::vec3 baseColor, glm::vec3 worldPos, glm::vec3 normal, Light light)
+{
+	glm::vec3 Lo(0.0f);
+
+	glm::vec3 N = glm::normalize(normal);
+	glm::vec3 L = glm::normalize(light.position - worldPos);
+	glm::vec3 V = glm::normalize(m_Camera->GetPosition() - worldPos);
+	glm::vec3 H = glm::normalize(L + V);
+
+	float distance = glm::length(light.position - worldPos);
+	float attenuation = 1.0 / (distance * distance);
+
+	glm::vec3 radiance = light.color * attenuation;
+	//glm::vec3 radiance = light.color;
+
+
+	glm::vec3 F0 = glm::vec3(0.04);
+	F0 = F0 * (1.0f - metallic) + baseColor * metallic;
+
+	float NDF = Utils::DistributionGGX(N, H, roughness);
+	float G = Utils::GeometrySmith(N, V, L, roughness);
+	glm::vec3 F = Utils::fresnelSchlick(glm::clamp(glm::dot(H, V), 0.0f, 1.0f), F0);
+
+	glm::vec3 nominator = NDF * G * F;
+	float denominator = 4 * std::max(glm::dot(N, V), 0.0f) * std::max(dot(N, L), 0.0f);
+	glm::vec3 specular = nominator / std::max(denominator, 0.001f); // prevent divide by zero for NdotV=0.0 or NdotL=0.0
+
+	// kS is equal to Fresnel
+	glm::vec3 kS = F;
+	glm::vec3 kD = glm::vec3(1.0) - kS;
+	kD *= 1.0 - metallic;
+
+	// scale light by NdotL
+	float NdotL = std::max(glm::dot(N, L), 0.0f);
+
+	// add to outgoing radiance Lo
+	Lo += (kD * baseColor / PI + specular) * radiance * NdotL;
+
+
+
+	glm::vec3 ambient = glm::vec3(0.03) * baseColor * ao;
+	glm::vec3 color = ambient + Lo;
+
+	// HDR tonemapping
+	color = color / (color + glm::vec3(1.0));
+	// gamma correct
+	color = pow(color, glm::vec3(1.0 / 2.2));
+
+
+	return color;
 }
 
 void Renderer::ResetData()
@@ -351,11 +448,11 @@ void Renderer::DrawTriangle(Triangle t, std::vector<glm::vec3> worldPos, std::ve
 				{
 				case Lambert: color = baseColor * CalculateLambertColor(worldPos_interpolated, normal_interpolated, light);
 					break;
-				case Phong: color = baseColor * CalculatePhongtColor(worldPos_interpolated, normal_interpolated, light);
+				case Phong: color = baseColor * CalculatePhongColor(worldPos_interpolated, normal_interpolated, light);
 					break;
-				case Blin_Phong: color = baseColor * CalculateBlin_PhongtColor(worldPos_interpolated, normal_interpolated, light);
+				case Blin_Phong: color = baseColor * CalculateBlin_PhongColor(worldPos_interpolated, normal_interpolated, light);
 					break;
-				case PBR:
+				case PBR:color = CalculatePBRColor(baseColor, worldPos_interpolated, normal_interpolated, light);
 					break;
 				default:
 					break;

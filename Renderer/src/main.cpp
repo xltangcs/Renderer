@@ -20,6 +20,10 @@
 #include "App/Scene/BaseScene.h"
 #include "App/Scene/PBRScene.h"
 
+ float metallic = 0.5f;
+ float roughness = 0.5f;
+ float ao = 1.0f;
+
 class MyImGuiLayer : public ImGuiLayer
 {
 public:
@@ -63,7 +67,7 @@ public:
 		{
 			m_Renderer.isReset = true;
 		}
-		if (ImGui::Combo("Shader Mode", (int*)&m_Renderer.lightmodelmode, shaderModeName, 3))
+		if (ImGui::Combo("Shader Mode", (int*)&m_Renderer.lightmodelmode, shaderModeName, 4))
 		{
 			m_Renderer.isReset = true;
 		}
@@ -86,6 +90,12 @@ public:
 		
 		ImGui::DragFloat3("Light position", glm::value_ptr(m_Scene.m_Lights[0].position));
 		ImGui::ColorEdit3("Light color", glm::value_ptr(m_Scene.m_Lights[0].color));
+
+		ImGui::Separator();
+		ImGui::DragFloat("Roughness", &roughness, 0.001f, 0.00f, 1.0f);
+		ImGui::DragFloat("Metallic", &metallic, 0.001f, 0.00f, 1.0f);
+
+	
 
 		m_Renderer.modelMatrix = glm::mat4(1.0f);
 		m_Renderer.modelMatrix = glm::translate(m_Renderer.modelMatrix, translate) *

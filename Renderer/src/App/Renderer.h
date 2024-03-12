@@ -47,9 +47,10 @@ public:
 	std::shared_ptr<Image> GetImage() const { return  m_FinalImage; }
 private:
 
-	glm::vec3 CalculateLambertColor(glm::vec3 viewPos, glm::vec3 normal, Light light);
-	glm::vec3 CalculatePhongtColor(glm::vec3 viewPos, glm::vec3 normal, Light light);
-	glm::vec3 CalculateBlin_PhongtColor(glm::vec3 viewPos, glm::vec3 normal, Light light);
+	glm::vec3 CalculateLambertColor(glm::vec3 worldPos, glm::vec3 normal, Light light);
+	glm::vec3 CalculatePhongColor(glm::vec3 worldPos, glm::vec3 normal, Light light);
+	glm::vec3 CalculateBlin_PhongColor(glm::vec3 worldPos, glm::vec3 normal, Light light);
+	glm::vec3 CalculatePBRColor(glm::vec3 baseColor, glm::vec3 worldPos, glm::vec3 normal, Light light);
 
 	void ResetData();
 

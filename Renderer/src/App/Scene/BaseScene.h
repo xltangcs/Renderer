@@ -10,8 +10,8 @@ Scene BaseScene()
 	int modelID = scene.AddModel("./assets/models/african_head.obj");
 
 	Light redlight;
-	redlight.color = glm::vec3(1.0f);
-	redlight.position = glm::vec3(0.0, 0.0, 15.0);
+	redlight.color = glm::vec3(300.0f, 300.0f, 300.0f);
+	redlight.position = glm::vec3(0.0, 0.0, 5.0);
 
 	int redLightID = scene.AddLight(redlight);
 
